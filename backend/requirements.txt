@@ -6,5 +6,6 @@ langgraph
 langchain
 langchain-google-genai
 langchain-core
+langgraph-checkpoint-postgres
 psycopg[binary]
 psycopg-pool
