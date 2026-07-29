@@ -10,9 +10,14 @@ from app.agents.review import review_agent
 from app.graph.checkpointer import get_checkpointer
 
 
-def route_after_requirement(state: AgentState) -> str:
+def route_after_clarification(state: AgentState) -> str:
+    """
+    Always run clarification to get a recommended_stack.
+    Only go through the HITL gate when the user actually needs to make a choice.
+    When needs_clarification is False, clarification already set user_stack automatically.
+    """
     if state.get("needs_clarification"):
-        return "clarification"
+        return "human_approval"
     return "planner"
 
 
@@ -32,21 +37,21 @@ def build_workflow():
     graph.add_node("generator", generator_agent)
     graph.add_node("review", review_agent)
 
+    # Always start with requirement → clarification so recommended_stack is always populated
     graph.add_edge(START, "requirement")
+    graph.add_edge("requirement", "clarification")
 
+    # After clarification: HITL gate if needed, otherwise straight to planner
     graph.add_conditional_edges(
-        "requirement",
-        route_after_requirement,
+        "clarification",
+        route_after_clarification,
         {
-            "clarification": "clarification",
+            "human_approval": "human_approval",
             "planner": "planner",
         },
     )
 
-    # HITL gate
-    graph.add_edge("clarification", "human_approval")
     graph.add_edge("human_approval", "planner")
-
     graph.add_edge("planner", "generator")
     graph.add_edge("generator", "review")
 
