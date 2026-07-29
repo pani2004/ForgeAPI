@@ -38,15 +38,28 @@ async def clarification_agent(state: AgentState) -> dict:
         )
     )
 
+    recommended_stack = {
+        "framework": result.framework,
+        "database": result.database,
+        "orm": result.orm,
+        "auth": result.auth,
+        "docker": result.docker,
+        "extras": result.extras,
+    }
+
+    # If no clarification is needed (user prompt was specific enough),
+    # auto-accept the recommended stack so the planner always has a stack to work with.
+    if not state.get("needs_clarification"):
+        return {
+            "recommended_stack": recommended_stack,
+            "user_stack": recommended_stack,
+            "clarification_questions": result.questions,
+            "current_phase": "clarification_done",
+            "messages": ["Stack inferred from prompt. Proceeding to planning."],
+        }
+
     return {
-        "recommended_stack": {
-            "framework": result.framework,
-            "database": result.database,
-            "orm": result.orm,
-            "auth": result.auth,
-            "docker": result.docker,
-            "extras": result.extras,
-        },
+        "recommended_stack": recommended_stack,
         "clarification_questions": result.questions,
         "current_phase": "awaiting_human_approval",
         "messages": ["Stack recommended. Waiting for human approval."],
