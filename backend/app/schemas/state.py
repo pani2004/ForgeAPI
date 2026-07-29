@@ -54,6 +54,7 @@ class AgentState(TypedDict, total=False):
     plan: list[PlanStep]
 
     # generation phase
+    current_step_index: int          
     generated_files: dict[str, str]
     project_path: str
 
