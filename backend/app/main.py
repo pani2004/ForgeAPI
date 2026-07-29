@@ -4,13 +4,14 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from langgraph.types import Command
 
 from app.graph import workflow as wf
 from app.graph.checkpointer import init_checkpointer, close_checkpointer
 from app.schemas.state import AgentState, TechStack
 from app.utils.interrupt_helpers import extract_interrupt, get_pending_interrupt
+from app.config import CORS_ORIGINS
 
 
 @asynccontextmanager
@@ -25,7 +26,7 @@ app = FastAPI(title="Agentic Backend Engineer", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +35,13 @@ app.add_middleware(
 
 class StartRequest(BaseModel):
     prompt: str
+
+    @field_validator("prompt")
+    @classmethod
+    def prompt_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("prompt cannot be empty")
+        return v.strip()
 
 
 class ClarifyRequest(BaseModel):
@@ -59,6 +67,7 @@ async def start_generation(payload: StartRequest):
         "user_prompt": payload.prompt,
         "thread_id": thread_id,
         "review_iteration": 0,
+        "current_step_index": 0,
         "generated_files": {},
         "messages": [],
     }
@@ -106,9 +115,7 @@ async def submit_clarification(payload: ClarifyRequest):
             detail="custom_stack is required when use_recommended=false",
         )
 
-    resume_value: dict[str, Any] = {
-        "use_recommended": payload.use_recommended,
-    }
+    resume_value: dict[str, Any] = {"use_recommended": payload.use_recommended}
     if payload.custom_stack:
         resume_value["custom_stack"] = payload.custom_stack
 

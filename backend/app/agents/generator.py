@@ -31,33 +31,33 @@ Project name:
 Current plan step:
 {step}
 
-Already generated files:
+Already generated files (do not regenerate these unless fixing a review issue):
 {existing_files}
 
-Review feedback to fix:
+Review feedback to fix (empty on first pass):
 {review_feedback}
 
 Rules:
 - Generate only the files needed for this step
 - Return complete file contents, not snippets
-- Follow FastAPI best practices
-- Enforce a modular backend architecture with clear separation of concerns
-- Use this structure when applicable:
-  - app/routes for API route declarations only
-  - app/controllers for request handling and orchestration
-  - app/models for database models/entities
-  - app/schemas for request/response validation
-  - app/services for business logic
-  - app/repositories (or app/crud) for data access
-  - app/core for config, security, and shared infrastructure
-  - app/db for database session/connection setup
-- Keep routes thin; put business logic in services/controllers
-- Keep data access out of routes/controllers; use repositories/crud layer
-- Prefer dependency injection for DB/session/auth dependencies
-- Reuse existing modules instead of duplicating logic in new files
-- Keep naming consistent across route, controller, service, and model layers
-- If generated files are in a flat structure, refactor them incrementally into modules
-- Do not include markdown fences
+- CRITICAL: match the language and framework in the chosen stack exactly
+  - Use the correct file extension (.py, .ts, .js, .go, .java, etc.)
+  - Use idiomatic syntax, imports, and patterns for that language/framework
+  - Do NOT apply Python/FastAPI patterns to a non-Python stack
+- Enforce modular separation of concerns regardless of stack:
+  - Routes / controllers  — HTTP layer only, no business logic
+  - Services              — all business logic lives here
+  - Repositories / DAOs   — all data access lives here
+  - Models / Entities     — ORM or struct definitions
+  - Schemas / DTOs        — input/output validation
+  - Config / core         — cross-cutting concerns (auth, middleware, env)
+- Use the folder structure the planner defined — do not invent new paths
+- Keep routes thin; delegate to services
+- Keep data access out of routes/services; use repositories
+- Use the stack's native pattern for dependency injection or middleware
+- Reuse existing modules; do not duplicate logic across files
+- Keep naming consistent across all layers
+- Do not include markdown fences in file contents
 """
 
 
@@ -66,19 +66,21 @@ async def generator_agent(state: AgentState) -> dict:
     plan = state.get("plan", [])
     generated_files = dict(state.get("generated_files", {}))
     review_iteration = state.get("review_iteration", 0)
+    current_step_index = state.get("current_step_index", 0)
 
-    # On first pass walk plan by how many files exist; on review retries regenerate with feedback
+    # On a review retry, regenerate with feedback instead of advancing the plan
     if review_iteration > 0 and state.get("review_feedback"):
         current_step = {
             "step_number": 0,
             "title": "Apply review feedback",
-            "description": "Fix issues found by the review agent",
-            "files": list(generated_files.keys())[:10],
+            "description": "Fix all issues reported by the review agent",
+            "files": list(generated_files.keys()),
         }
+        next_step_index = current_step_index 
     elif plan:
-        # Pick next incomplete step roughly by file coverage
-        step_index = min(len(generated_files) // 3, len(plan) - 1)
-        current_step = plan[step_index]
+        safe_index = min(current_step_index, len(plan) - 1)
+        current_step = plan[safe_index]
+        next_step_index = min(current_step_index + 1, len(plan) - 1)
     else:
         current_step = {
             "step_number": 1,
@@ -86,6 +88,7 @@ async def generator_agent(state: AgentState) -> dict:
             "description": "Create base project files",
             "files": ["app/main.py", "requirements.txt", "README.md"],
         }
+        next_step_index = 0
 
     llm = get_llm(temperature=0.1).with_structured_output(GeneratedStepOutput)
 
@@ -111,6 +114,11 @@ async def generator_agent(state: AgentState) -> dict:
     return {
         "generated_files": generated_files,
         "project_path": project_path,
+        "current_step_index": next_step_index,
         "current_phase": "generation_done",
-        "messages": [f"Generated/updated {len(result.files)} files."],
+        "messages": [
+            f"[Step {current_step.get('step_number', '?')}] "
+            f"{current_step.get('title', '')} — "
+            f"generated {len(result.files)} file(s)."
+        ],
     }
