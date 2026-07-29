@@ -41,7 +41,22 @@ Rules:
 - Generate only the files needed for this step
 - Return complete file contents, not snippets
 - Follow FastAPI best practices
-- Use clean folder structure
+- Enforce a modular backend architecture with clear separation of concerns
+- Use this structure when applicable:
+  - app/routes for API route declarations only
+  - app/controllers for request handling and orchestration
+  - app/models for database models/entities
+  - app/schemas for request/response validation
+  - app/services for business logic
+  - app/repositories (or app/crud) for data access
+  - app/core for config, security, and shared infrastructure
+  - app/db for database session/connection setup
+- Keep routes thin; put business logic in services/controllers
+- Keep data access out of routes/controllers; use repositories/crud layer
+- Prefer dependency injection for DB/session/auth dependencies
+- Reuse existing modules instead of duplicating logic in new files
+- Keep naming consistent across route, controller, service, and model layers
+- If generated files are in a flat structure, refactor them incrementally into modules
 - Do not include markdown fences
 """
 
