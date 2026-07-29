@@ -16,7 +16,10 @@ async def init_checkpointer() -> AsyncPostgresSaver:
 
     _pool = AsyncConnectionPool(
         conninfo=DATABASE_URL,
+        min_size=2,      
         max_size=10,
+        max_idle=300.0,  
+        max_lifetime=3600.0,  
         kwargs={
             "autocommit": True,
             "row_factory": dict_row,
