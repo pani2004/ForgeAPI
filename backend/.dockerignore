@@ -1,0 +1,30 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+myenv/
+venv/
+.venv/
+env/
+
+# Environment files (injected via docker-compose, never baked into image)
+.env
+.env.*
+
+# Generated output (mounted as a volume)
+generated_projects/
+
+# Editor / OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Tests / CI
+.pytest_cache/
+.coverage
+htmlcov/
